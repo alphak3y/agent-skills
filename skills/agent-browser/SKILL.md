@@ -117,6 +117,30 @@ print('Saved page.png')
 | Performance audit | `lighthouse.sh` | Core Web Vitals scores |
 | Form testing | `browse.js` (Playwright) | Fill + submit + verify |
 | Content extraction | PinchTab `text` or `snap` | Token-efficient |
+| Share image with human | `share-image.sh` (S3) | Works on any chat platform |
+
+### Share Screenshots (S3)
+
+Upload images to S3 and get a shareable public URL:
+
+```bash
+# Set default bucket (or pass as arg)
+export SHARE_BUCKET=my-bucket
+
+# Upload and get URL
+bash scripts/share-image.sh ./screenshot.png
+# → https://my-bucket.s3.us-east-2.amazonaws.com/screenshots/20260316-193000-screenshot.png
+
+# Custom bucket and prefix
+bash scripts/share-image.sh ./mockup.png my-bucket designs
+```
+
+Requires AWS credentials (IAM role on EC2, env vars, or `~/.aws/credentials`).
+
+**Agent workflow for sharing visuals with humans:**
+1. Take screenshot or generate design artifact
+2. `bash scripts/share-image.sh ./artifact.png` → get URL
+3. Send URL in chat — works on any platform (webchat, Telegram, Slack, etc.)
 
 ## Tips
 

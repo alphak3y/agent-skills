@@ -13,6 +13,7 @@ Browser automation, screenshots, visual testing, and performance auditing for AI
 | **Visual regression testing** | ImageMagick | `apt install imagemagick` |
 | **Performance audits** | Lighthouse | Auto-installs |
 | **Content extraction** | PinchTab / Playwright | Either works |
+| **Share images with humans** | S3 upload (`share-image.sh`) | Any chat platform |
 
 ## Quick Start
 
@@ -62,6 +63,18 @@ NODE_PATH=$(npm root -g) node skills/agent-browser/scripts/browse.js '{
 bash skills/agent-browser/scripts/visual-diff.sh before.png after.png diff.png
 ```
 
+### Share Screenshots
+
+Upload to S3 and get a public URL you can send in any chat:
+
+```bash
+export SHARE_BUCKET=my-bucket
+bash skills/agent-browser/scripts/share-image.sh ./screenshot.png
+# → https://my-bucket.s3.us-east-2.amazonaws.com/screenshots/20260316-screenshot.png
+```
+
+Requires AWS credentials (IAM role, env vars, or `~/.aws/credentials`).
+
 ### Run Lighthouse Audit
 
 ```bash
@@ -85,6 +98,7 @@ skills/agent-browser/
 └── scripts/
     ├── screenshot.sh           # Quick screenshots (Playwright or PinchTab)
     ├── browse.js               # Multi-step browser automation (Playwright)
+    ├── share-image.sh          # Upload images to S3 for sharing via URL
     ├── visual-diff.sh          # Compare two screenshots (ImageMagick)
     └── lighthouse.sh           # Performance/accessibility audits
 ```
