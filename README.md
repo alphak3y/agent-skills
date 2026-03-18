@@ -93,14 +93,20 @@ Agents discover skills automatically.
 ## Skill Structure
 
 ```
-skills/agent-browser/
-├── SKILL.md                    # When and how to use each tool
-└── scripts/
-    ├── screenshot.sh           # Quick screenshots (Playwright or PinchTab)
-    ├── browse.js               # Multi-step browser automation (Playwright)
-    ├── share-image.sh          # Upload images to S3 for sharing via URL
-    ├── visual-diff.sh          # Compare two screenshots (ImageMagick)
-    └── lighthouse.sh           # Performance/accessibility audits
+skills/
+├── agent-browser/
+│   ├── SKILL.md                # When and how to use each tool
+│   └── scripts/
+│       ├── screenshot.sh       # Quick screenshots (Playwright or PinchTab)
+│       ├── browse.js           # Multi-step browser automation (Playwright)
+│       ├── share-image.sh      # Upload images to S3 for sharing via URL
+│       ├── visual-diff.sh      # Compare two screenshots (ImageMagick)
+│       └── lighthouse.sh       # Performance/accessibility audits
+└── s3-share/
+    ├── SKILL.md                # S3 presigned URL file sharing
+    └── scripts/
+        ├── s3-share.sh         # Upload file → get presigned URL
+        └── s3-setup.sh         # One-command bucket setup
 ```
 
 ## Two Engines, One Skill
