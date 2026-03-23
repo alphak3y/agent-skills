@@ -125,9 +125,15 @@ metrics = await sdk.get_open_trade_metrics(pair_id, trade_index)
 
 7. **`balance.get_balance()` may be sync** — Some SDK methods are sync, some async. Wrap with `asyncio.iscoroutine()` check if unsure.
 
-8. **WTI ≠ Brent** — CL-USD (pair 7) is WTI, BRENT-USD (pair 55) is Brent. Different benchmarks, different prices (~$9 spread typical), different trading hours. Don't compare prices across them.
+8. **WTI ≠ Brent** — CL-USD (pair 7) is WTI (~$88), BRENT-USD (pair 55) is Brent (~$97). Different benchmarks, different prices (~$9 spread typical), different trading hours. Don't compare prices across them.
 
 9. **Ostium trading hours ≠ traditional futures hours** — Ostium has wider daily breaks than the underlying exchanges (e.g., ~3h break for Brent vs ~1h on ICE). Plan around Ostium's specific schedule, not the exchange schedule.
+
+10. **Never set price parameters from stale/closed-market data** — When a market is closed, the price feed returns the last traded price from Friday. Opening prices can gap significantly. Always wait for the market to open and the price to settle (~30s) before setting entry, TP, and SL levels.
+
+11. **Pending market orders show confusing dates in UI** — Orders submitted during closed hours show a default expiry date (e.g., 31/12) in the Ostium UI, not the creation date. These eventually auto-cancel with TIMEOUT.
+
+12. **Finding stuck orders** — The subgraph `get_orders()` may not return pending market orders. Use `get_order_by_id(order_id)` to check specific orders, or scan nearby order IDs. Cancel with `sdk.ostium.open_market_timeout(order_id)`.
 
 ## Pair IDs
 
