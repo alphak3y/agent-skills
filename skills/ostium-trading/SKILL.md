@@ -38,11 +38,13 @@ price, bid, ask = await sdk.price.get_price("BRENT", "USD") # Brent Crude
 price, bid, ask = await sdk.price.get_price("XAU", "USD")   # Gold
 ```
 
-### Open a Trade
+### Open a Market Trade
 
 ```python
 from decimal import Decimal
 
+# IMPORTANT: Check market hours first for RWA assets!
+# Market orders during closed hours auto-cancel (TIMEOUT).
 sdk.ostium.set_slippage_percentage(Decimal('1.0'))  # MUST be Decimal, not float
 
 trade_params = {
@@ -56,8 +58,28 @@ trade_params = {
 }
 
 result = sdk.ostium.perform_trade(trade_params, at_price=price)
-# Returns: {"receipt": AttributeDict({...}), "order_id": int}
+# Returns: {"receipt": AttributeDict({...}), "order_id": int|None}
 tx_hash = result['receipt']['transactionHash'].hex()
+```
+
+### Open a Limit Order (Best for Market-Open Entries)
+
+```python
+# For limit/stop orders: slippage MUST be 0
+sdk.ostium.set_slippage_percentage(Decimal('0'))
+
+limit_params = {
+    'collateral': 10,
+    'leverage': 5,
+    'asset_type': 55,         # BRENT-USD
+    'direction': True,        # Long
+    'order_type': 'LIMIT',    # or 'STOP'
+    'tp': price * 1.02,
+    'sl': price * 0.98,
+}
+
+# Set limit price slightly below current for longs (better entry)
+result = sdk.ostium.perform_trade(limit_params, at_price=price * 0.998)
 ```
 
 ### Close / Manage Trades
@@ -91,15 +113,21 @@ metrics = await sdk.get_open_trade_metrics(pair_id, trade_index)
 
 1. **Slippage MUST be `Decimal`** — `set_slippage_percentage(Decimal('1.0'))` not `float`. The SDK uses `decimal.Decimal` internally and will throw `TypeError` on float.
 
-2. **perform_trade returns nested dict** — `result['receipt']['transactionHash']`, not `result['transactionHash']`.
+2. **perform_trade returns nested dict** — `result['receipt']['transactionHash']`, not `result['transactionHash']`. Full shape: `{"receipt": AttributeDict({...}), "order_id": int|None}`.
 
-3. **Non-market orders need slippage=0** — For limit and stop orders, pass `slippage=0` in `openTrade` (breaking change Feb 2026). Market orders and closes are unaffected.
+3. **Non-market orders need slippage=0** — For limit and stop orders, set `set_slippage_percentage(Decimal('0'))` before calling `perform_trade` (breaking change Feb 2026). Market orders and closes are unaffected.
 
-4. **RWA markets have trading hours** — Oil, stocks, FX are NOT 24/7. Check hours before placing orders. Pending market orders placed during closed hours queue until market opens.
+4. **Market orders during closed hours get TIMEOUT cancelled** — If you submit a market order while the RWA market is closed, it will sit pending and then auto-cancel with `cancelReason: TIMEOUT`. Your collateral is returned, but you wasted gas. **Always check trading hours before placing market orders on RWA assets.**
 
-5. **Geo-restrictions on frontend only** — `app.ostium.com` may show `restricted=true` for some IPs (US, AWS). The smart contracts and all APIs are unrestricted. Bot trading works fine from any IP.
+5. **Use limit orders for market-open entries** — To get the best fill when a market opens, place a limit order slightly below last close (for longs) or above (for shorts). This avoids the opening spread/volatility and the timeout issue.
 
-6. **`balance.get_balance()` may be sync** — Some SDK methods are sync, some async. Wrap with `asyncio.iscoroutine()` check if unsure.
+6. **Geo-restrictions on frontend only** — `app.ostium.com` may show `restricted=true` for some IPs (US, AWS). The smart contracts and all APIs are unrestricted. Bot trading works fine from any IP.
+
+7. **`balance.get_balance()` may be sync** — Some SDK methods are sync, some async. Wrap with `asyncio.iscoroutine()` check if unsure.
+
+8. **WTI ≠ Brent** — CL-USD (pair 7) is WTI, BRENT-USD (pair 55) is Brent. Different benchmarks, different prices (~$9 spread typical), different trading hours. Don't compare prices across them.
+
+9. **Ostium trading hours ≠ traditional futures hours** — Ostium has wider daily breaks than the underlying exchanges (e.g., ~3h break for Brent vs ~1h on ICE). Plan around Ostium's specific schedule, not the exchange schedule.
 
 ## Pair IDs
 
