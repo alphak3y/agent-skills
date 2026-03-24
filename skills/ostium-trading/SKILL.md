@@ -69,7 +69,7 @@ result = sdk.ostium.perform_trade(trade_params, at_price=price)
 tx_hash = result['receipt']['transactionHash'].hex()
 ```
 
-### Open a Limit Order (Best for Market-Open Entries)
+### Open a Limit Order
 
 ```python
 # For limit/stop orders: slippage MUST be 0
@@ -85,8 +85,16 @@ limit_params = {
     'sl': price * 0.98,
 }
 
-# Set limit price slightly below current for longs (better entry)
+# For a better entry (patient fill): set limit 0.2% BELOW current price
 result = sdk.ostium.perform_trade(limit_params, at_price=price * 0.998)
+
+# For immediate entry: set limit 0.1% ABOVE current price
+# This fills on the next oracle update, like a market order but as a limit.
+# Preferred over market orders because:
+#   - No TIMEOUT risk during closed RWA hours
+#   - Predictable max fill price (your limit is the ceiling)
+#   - Same gas cost as a market order
+result = sdk.ostium.perform_trade(limit_params, at_price=price * 1.001)
 ```
 
 ### Close / Manage Trades
