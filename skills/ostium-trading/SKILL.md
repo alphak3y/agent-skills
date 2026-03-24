@@ -95,6 +95,9 @@ sdk.ostium.close_trade(pair_id, trade_index)
 sdk.ostium.update_tp(pair_id, trade_index, new_tp_price)
 sdk.ostium.update_sl(pair_id, trade_index, new_sl_price)
 
+# Update limit order (price, TP, SL) — requires private_key arg
+sdk.ostium.update_limit_order(pair_id, index, private_key, price=new_price, tp=new_tp, sl=new_sl)
+
 # Cancel pending market order
 sdk.ostium.open_market_timeout(order_id)
 
@@ -107,6 +110,25 @@ sdk.ostium.remove_collateral(pair_id, trade_index, amount)
 
 # Get live trade metrics (PnL, funding, liquidation price)
 metrics = await sdk.get_open_trade_metrics(pair_id, trade_index)
+```
+
+### Monitor Order Fill
+
+```python
+# Poll subgraph to detect when a limit order fills
+async def wait_for_fill(sdk, wallet, pair_id, poll_interval=10):
+    while True:
+        trades = await sdk.subgraph.get_open_trades(wallet)
+        filled = [t for t in trades if t.get('pair', {}).get('id') == str(pair_id)]
+        if filled:
+            return filled[0]  # Trade is now open
+        
+        orders = await sdk.subgraph.get_orders(wallet)
+        active = [o for o in orders if o.get('isActive')]
+        if not active:
+            return None  # Order cancelled or expired
+        
+        await asyncio.sleep(poll_interval)
 ```
 
 ## Known Gotchas
@@ -134,6 +156,8 @@ metrics = await sdk.get_open_trade_metrics(pair_id, trade_index)
 11. **Pending market orders show confusing dates in UI** — Orders submitted during closed hours show a default expiry date (e.g., 31/12) in the Ostium UI, not the creation date. These eventually auto-cancel with TIMEOUT.
 
 12. **Finding stuck orders** — The subgraph `get_orders()` may not return pending market orders. Use `get_order_by_id(order_id)` to check specific orders, or scan nearby order IDs. Cancel with `sdk.ostium.open_market_timeout(order_id)`.
+
+13. **`update_limit_order` requires private_key as 3rd arg** — Unlike other methods that use the SDK's stored key, `update_limit_order(pair_id, index, private_key, price=..., tp=..., sl=...)` needs the key passed explicitly. Omitting it causes a cryptic "Unknown error".
 
 ## Pair IDs
 
