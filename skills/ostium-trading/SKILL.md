@@ -119,6 +119,7 @@ metrics = await sdk.get_open_trade_metrics(pair_id, trade_index)
 async def wait_for_fill(sdk, wallet, pair_id, poll_interval=10):
     while True:
         trades = await sdk.subgraph.get_open_trades(wallet)
+        # NOTE: subgraph uses 'isBuy' not 'buy' for open trades
         filled = [t for t in trades if t.get('pair', {}).get('id') == str(pair_id)]
         if filled:
             return filled[0]  # Trade is now open
@@ -129,6 +130,45 @@ async def wait_for_fill(sdk, wallet, pair_id, poll_interval=10):
             return None  # Order cancelled or expired
         
         await asyncio.sleep(poll_interval)
+```
+
+### Wait for Market Open Then Trade
+
+```python
+import httpx
+
+async def wait_for_market_open(asset="BRENTUSD"):
+    """Poll until RWA market opens. Returns live price."""
+    while True:
+        async with httpx.AsyncClient(timeout=10) as http:
+            resp = await http.get(
+                f"https://metadata-backend.ostium.io/PricePublish/latest-price?asset={asset}"
+            )
+            data = resp.json()
+            if data.get("isMarketOpen"):
+                return data["mid"]
+        await asyncio.sleep(15)
+
+# Usage:
+price = await wait_for_market_open("BRENTUSD")
+await asyncio.sleep(30)  # Let opening price settle
+# Now fetch fresh price and place order with live data
+```
+
+### Check Market Hours
+
+```python
+# Price API also returns market status
+# Response includes: isMarketOpen, isDayTradingClosed, secondsToToggleIsDayTradingClosed
+
+# Trading hours API returns schedule in America/New_York timezone
+# with secondsToToggleMarketStatus countdown
+async with httpx.AsyncClient() as http:
+    resp = await http.get(
+        "https://metadata-backend.ostium.io/trading-hours/asset-schedule?asset=BRENTUSD"
+    )
+    hours = resp.json()
+    # hours['isOpenNow'], hours['secondsToToggleMarketStatus'], hours['timezone']
 ```
 
 ## Known Gotchas
@@ -158,6 +198,20 @@ async def wait_for_fill(sdk, wallet, pair_id, poll_interval=10):
 12. **Finding stuck orders** — The subgraph `get_orders()` may not return pending market orders. Use `get_order_by_id(order_id)` to check specific orders, or scan nearby order IDs. Cancel with `sdk.ostium.open_market_timeout(order_id)`.
 
 13. **`update_limit_order` requires private_key as 3rd arg** — Unlike other methods that use the SDK's stored key, `update_limit_order(pair_id, index, private_key, price=..., tp=..., sl=...)` needs the key passed explicitly. Omitting it causes a cryptic "Unknown error".
+
+14. **Subgraph field naming inconsistency** — Open trades use `isBuy` (not `buy`). Open limit orders also use `isBuy`. But the SDK's `get_orders()` returns `isBuy` while some raw subgraph entities may differ. Always verify the field name.
+
+15. **Collateral after fill ≠ collateral submitted** — Opening fees are deducted from collateral. A $5 trade may show $4.89 collateral after fill. The `openPrice` is in wei (18 decimals): divide by 1e18 to get USD price.
+
+16. **Price values in subgraph are 18-decimal wei** — `openPrice`, `tp`, `sl` are all in wei. Example: `97735300000000000000` = $97.74. Divide by `10**18`.
+
+17. **Limit order above current price fills immediately** — Setting a limit buy above current market price acts like a market order (fills on next oracle update). Use this for "buy now at up to X" behavior.
+
+18. **Trading hours API timezone is America/New_York** — All schedule times from `metadata-backend.ostium.io/trading-hours/` are in ET. Convert to UTC: during EDT (Mar-Nov) add 4 hours, during EST (Nov-Mar) add 5 hours.
+
+19. **Gas costs on Arbitrum are minimal** — Opening a trade costs ~460K gas (~$0.009). Cancels cost ~130K gas. Don't optimize for gas; optimize for correct execution.
+
+20. **SDK GitHub has more examples** — `https://github.com/0xOstium/use-ostium-python-sdk` has working examples for orders, trades, TP/SL, funding rates, PnL calculation.
 
 ## Pair IDs
 

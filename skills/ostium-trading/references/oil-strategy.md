@@ -118,3 +118,20 @@ Each subsequent trade in a session is 20% smaller (prevents tilt).
 - **Weekend gaps** — Oil futures close Friday, reopen Sunday. Ostium perps may gap violently. Understand how Ostium handles weekend oracle pricing.
 - **Backtesting is nearly impossible** for news-driven strategies. Forward-test in paper/monitor mode for 2-4 weeks.
 - **Geopolitical premium fades** — Markets price in ongoing conflicts quickly. The tradeable moment is the *surprise change*.
+
+### Market-Open Entry Pattern (Tested)
+
+The best approach for entering a position at market open:
+
+1. **Wait for `isMarketOpen: true`** from the price API (poll every 15s)
+2. **Wait 30 seconds** for the opening price to settle (initial ticks can be volatile)
+3. **Fetch fresh price** — don't use the stale closed-market price
+4. **Place a limit order** 0.1-0.2% away from current price
+5. **Set limit above current for quick fill** — a limit buy above market acts like a controlled market order
+
+This avoids:
+- TIMEOUT cancellations from market orders placed during closed hours
+- Bad fills from stale prices
+- Opening spread volatility
+
+Example from our first live test: Brent closed Friday at $97.19, opened Monday at $98.06 (gap up $0.87). Had we placed a market order at $97.19 it would have either timed out or filled at a worse price.
