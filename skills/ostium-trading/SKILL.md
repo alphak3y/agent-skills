@@ -33,9 +33,16 @@ sdk = OstiumSDK(NetworkConfig.mainnet(), rpc_url="https://arb1.arbitrum.io/rpc")
 ### Get Prices
 
 ```python
-price, bid, ask = await sdk.price.get_price("CL", "USD")   # WTI Crude Oil
-price, bid, ask = await sdk.price.get_price("BRENT", "USD") # Brent Crude
-price, bid, ask = await sdk.price.get_price("XAU", "USD")   # Gold
+# SDK get_price returns (mid_price, bid_flag, ask_flag)
+# NOTE: bid/ask are booleans (market direction indicators), NOT prices
+price, _, _ = await sdk.price.get_price("CL", "USD")   # WTI Crude Oil
+price, _, _ = await sdk.price.get_price("BRENT", "USD") # Brent Crude
+price, _, _ = await sdk.price.get_price("XAU", "USD")   # Gold
+
+# For actual bid/ask prices, use REST API directly:
+# curl 'https://metadata-backend.ostium.io/PricePublish/latest-price?asset=CLUSD'
+# Returns: {"bid": 88.53, "mid": 88.57, "ask": 88.61, "isMarketOpen": true, ...}
+# NOTE: Asset names in REST API are concatenated: CLUSD, BRENTUSD, XAUUSD (no hyphen)
 ```
 
 ### Open a Market Trade
@@ -212,6 +219,26 @@ async with httpx.AsyncClient() as http:
 19. **Gas costs on Arbitrum are minimal** — Opening a trade costs ~460K gas (~$0.009). Cancels cost ~130K gas. Don't optimize for gas; optimize for correct execution.
 
 20. **SDK GitHub has more examples** — `https://github.com/0xOstium/use-ostium-python-sdk` has working examples for orders, trades, TP/SL, funding rates, PnL calculation.
+
+21. **Leverage in subgraph is 100x actual** — Subgraph returns `leverage: 200` for 2x leverage, `leverage: 1000` for 10x. Divide by 100 to get the real multiplier. Same for `maxLeverage` in pair details (`2000` = 20x max).
+
+22. **`get_price()` bid/ask are NOT prices** — `sdk.price.get_price()` returns `(mid_price, bid_bool, ask_bool)`. The second and third values are boolean market direction flags, not bid/ask prices. Use the REST API (`/PricePublish/latest-price`) to get actual bid/ask spread.
+
+23. **REST API asset names are concatenated** — Use `CLUSD` not `CL-USD`, `BRENTUSD` not `BRENT-USD`, `XAUUSD` not `XAU-USD`. The SDK uses separate `from`/`to` args but the REST API concatenates them.
+
+24. **`get_order_by_id(order_id)` for checking specific orders** — When `get_orders()` doesn't show a pending market order, use `await sdk.subgraph.get_order_by_id(order_id)` to look it up directly. Returns full order details including `isPending`, `isCancelled`, `cancelReason`.
+
+25. **`perform_trade` returns `order_id: None` for limit orders** — Only market orders populate the `order_id` field in the return dict. Limit/stop orders return `None`. Find limit orders via `get_orders(wallet_address)` instead.
+
+26. **Pair details from subgraph include key trading info** — `get_pairs()` returns: `maxLeverage` (÷100), `maxOI`, `longOI`/`shortOI` (current open interest), `rolloverFeePerBlock`, `takerFeeP`/`makerFeeP`, `totalOpenTrades`, `totalOpenLimitOrders`. Useful for checking liquidity and fees before trading.
+
+27. **Direct subgraph GraphQL queries** — For data the SDK doesn't expose, query the subgraph directly:
+    ```python
+    import httpx
+    SUBGRAPH = "https://api.subgraph.ormilabs.com/api/public/67a599d5-c8d2-4cc4-9c4d-2975a97bc5d8/subgraphs/ost-prod/live/gn"
+    query = '{ orders(where: {trader: "0x..."}, first: 10) { id orderType isPending isCancelled } }'
+    resp = await httpx.AsyncClient().post(SUBGRAPH, json={"query": query})
+    ```
 
 ## Pair IDs
 
