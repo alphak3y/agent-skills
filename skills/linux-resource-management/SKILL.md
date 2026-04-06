@@ -1,11 +1,11 @@
 ---
-name: ec2-resource-management
-description: Manage EC2 memory, swap, and processes to prevent OOM kills during heavy agent workloads. Use when running enrichment pipelines, multiple subagents, or any memory-intensive batch operation. Also use when diagnosing crashes, freeing memory, or monitoring resource usage. Triggers on "OOM", "out of memory", "crashed", "killed", "memory", "swap", "free up", "EC2 resources".
+name: linux-resource-management
+description: Manage Linux memory, swap, and processes to prevent OOM kills during heavy agent workloads. Use when running enrichment pipelines, multiple subagents, or any memory-intensive batch operation. Also use when diagnosing crashes, freeing memory, or monitoring resource usage. Triggers on "OOM", "out of memory", "crashed", "killed", "memory", "swap", "free up", "EC2 resources".
 ---
 
-# EC2 Resource Management
+# Linux Resource Management
 
-Prevent OOM kills and manage resources on memory-constrained EC2 instances running OpenClaw.
+Prevent OOM kills and manage resources on memory-constrained Linux instances running OpenClaw.
 
 ## Current Setup
 - **Instance:** t3-class (3.7GB RAM)
