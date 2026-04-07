@@ -269,6 +269,61 @@ This prevents the "merged the code but forgot to run the migration" problem. The
 
 **Watch for missing columns:** If the consolidated schema was rebuilt from old migrations, some columns may exist in `schema.sql` but not in the live DB. Always verify new columns actually exist before creating indexes that reference them.
 
+## Writing Subagent Prompts
+
+When dispatching work to a subagent (or structuring your own task), a good prompt has six parts:
+
+```
+[CONTEXT]
+What exists today, what was recently changed, relevant patterns.
+Include recent PR numbers or commits that relate to this work.
+
+[FILES TO READ]
+Exact file paths the agent should read before starting.
+Don't say "look at the auth folder" — say "src/components/auth/AuthProvider.tsx".
+
+[TASK]
+Specific deliverable with clear scope. Use sub-tasks (a, b, c) for multi-file changes.
+One task per agent — don't overload.
+
+[CONSTRAINTS]
+- Don't install new packages
+- Don't modify test files
+- Don't run the dev server
+- TypeScript must compile clean (`npx tsc --noEmit`)
+- Commit with descriptive message and push
+
+[GIT]
+Branch name, base branch, git identity:
+  git config user.name "yourname"
+  git config user.email "id+yourname@users.noreply.github.com"
+
+[SUCCESS CRITERIA]
+What "done" looks like. Be specific:
+- "Login from /dashboard redirects back to /dashboard after auth"
+- "Fleet items can go live regardless of waiver readiness"
+- "`npx tsc --noEmit` passes"
+```
+
+### Tips
+- **Be specific about files** — list exact paths, not directories
+- **Include context from today's work** — what was just built, what patterns to follow
+- **Set constraints early** — saves wasted work (e.g., "don't install packages")
+- **One task per agent** — focused prompts get better results
+- **Multi-PR runs** — for 2+ independent changes, structure as `[TASK 1 — Branch: fix/x]` and `[TASK 2 — Branch: feat/y]` in one prompt. One context load, multiple atomic PRs.
+
+### Multi-PR prompt pattern
+
+```
+[TASK 1 — Branch: fix/thing-a]
+Create branch from <base>, implement change, commit, push.
+
+[TASK 2 — Branch: feat/thing-b]
+Checkout <base> again, create branch, implement, commit, push.
+```
+
+Each task gets its own branch, its own PR, its own review. Cheaper than N separate agent runs.
+
 ## Live Preview for PR Testing
 
 After a subagent finishes work on a PR branch, it should spin up a dev server so changes can be tested live before merging.
