@@ -99,6 +99,7 @@ git show origin/<old-branch>:<path> > <path>
 - `git checkout origin/<stale-branch> -- <file>` on files that main has updated — overwrites stable code
 - `git push origin <new>:<old> --force-with-lease` to update an existing PR — this **destroys the original commit history**. Always push to a new branch and create a new PR. Reference the old PR in the description. The old branch stays intact for reference.
 - **`--force-with-lease` or `--force` push** — only two valid cases: (1) fixing commit author attribution (e.g., commits pushed as `stack-dev` instead of `alphak3y`), and (2) scrubbing accidentally committed secrets from history. For everything else — adding changes, fixing bugs, addressing review feedback — make a new commit and push normally. Force-pushing destroys review context and hides history.
+- **Rebasing a stale PR** — do NOT force-push the rebased result to the original branch. Instead: create a NEW branch (e.g., `feat/feature-name-v2`), push there, and open a NEW PR referencing the old one. Close the old PR with a comment pointing to the new one. This preserves the original PR's review history and avoids overwriting someone else's branch.
 
 ### Conflict-free doesn't mean safe
 **Critical lesson:** A stale branch can be `MERGEABLE` (no git conflicts) but still destructive. If main updated a file from v1→v2, and the branch has v1.1, git may auto-merge to v1.1 — losing v2 entirely. Always check what the diff actually contains, not just whether GitHub says it's mergeable.
