@@ -14,10 +14,6 @@ Set these when installing the skill. Update as needed.
 ```yaml
 # Port for the dev server when spinning up live previews
 DEV_PORT: 3000
-
-# Public IP or hostname for accessing the dev server (optional)
-# Leave empty if localhost-only
-PUBLIC_HOST: ""
 ```
 
 ## Step 1: Inventory
@@ -289,7 +285,7 @@ Do NOT start a server for:
 
 ### Add to subagent prompts (frontend PRs)
 
-Replace `{{DEV_PORT}}` and `{{PUBLIC_HOST}}` with your configured values.
+Replace `{{DEV_PORT}}` with your configured port.
 
 ```
 [POST-COMPLETION]
@@ -297,7 +293,7 @@ After all tasks pass tsc, start the dev server for manual testing:
   # Kill any existing dev server on the configured port first
   lsof -ti:{{DEV_PORT}} | xargs kill -9 2>/dev/null || true
   npx next dev --turbopack -p {{DEV_PORT}}
-Report the URL (http://{{PUBLIC_HOST}}:{{DEV_PORT}}) so changes can be tested live.
+Report the URL (http://localhost:{{DEV_PORT}}) so changes can be tested live.
 Do NOT kill the server — leave it running for the reviewer.
 ```
 
