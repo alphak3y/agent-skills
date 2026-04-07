@@ -260,6 +260,32 @@ This prevents the "merged the code but forgot to run the migration" problem. The
 
 **Watch for missing columns:** If the consolidated schema was rebuilt from old migrations, some columns may exist in `schema.sql` but not in the live DB. Always verify new columns actually exist before creating indexes that reference them.
 
+## Live Preview for PR Testing
+
+After a subagent finishes work on a PR branch, it should spin up a dev server so changes can be tested live before merging.
+
+### Add to subagent prompts
+
+```
+[POST-COMPLETION]
+After all tasks pass tsc, start the dev server for manual testing:
+  # Kill any existing dev server on port 3000 first
+  lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+  npx next dev --turbopack
+Report the URL (http://<PUBLIC_IP>:3000) so changes can be tested live.
+Do NOT kill the server — leave it running for the reviewer.
+```
+
+### Guidelines
+- Use port **3000** (the app's default — all redirects, magic links, and env vars reference this port)
+- Kill any existing process on port 3000 before starting
+- Only one dev server at a time
+- The server stays up until the orchestrator or user explicitly kills it
+- Skip this for non-web tasks (CLI tools, library code, scripts)
+
+### Why this matters
+GitHub's `MERGEABLE` status and `tsc` passing don't catch UI regressions, broken auth flows, or misconfigured redirects. A live preview lets the reviewer (human or orchestrator) click through the actual app on the feature branch before approving.
+
 ## Anti-Patterns
 
 | ❌ Don't | ✅ Do |
