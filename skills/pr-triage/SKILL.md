@@ -264,7 +264,17 @@ This prevents the "merged the code but forgot to run the migration" problem. The
 
 After a subagent finishes work on a PR branch, it should spin up a dev server so changes can be tested live before merging.
 
-### Add to subagent prompts
+### When to spin up a live preview
+
+**Frontend apps only.** If the PR changes a web app with a UI (Next.js, React, Vue, etc.), spin up a dev server so reviewers can click through the changes.
+
+Do NOT start a server for:
+- Backend-only services (APIs without a UI)
+- CLI tools, scripts, or libraries
+- Config-only changes
+- Documentation
+
+### Add to subagent prompts (frontend PRs)
 
 ```
 [POST-COMPLETION]
@@ -281,7 +291,6 @@ Do NOT kill the server — leave it running for the reviewer.
 - Kill any existing process on port 3000 before starting
 - Only one dev server at a time
 - The server stays up until the orchestrator or user explicitly kills it
-- Skip this for non-web tasks (CLI tools, library code, scripts)
 
 ### Why this matters
 GitHub's `MERGEABLE` status and `tsc` passing don't catch UI regressions, broken auth flows, or misconfigured redirects. A live preview lets the reviewer (human or orchestrator) click through the actual app on the feature branch before approving.
