@@ -32,6 +32,7 @@ Check:
 - **Quality** — clear names, appropriate complexity, proper error handling
 - **Testing** — tests verify behavior (not mocks), edge cases covered
 - **Patterns** — follows codebase conventions, DRY, YAGNI
+- **Artifacts** — no test/build artifacts committed (`test-results/`, `playwright-report/`, `.last-run.json`, `coverage/`, `.next/`, `dist/`). If found, flag as 🔴 Critical.
 
 Issues by severity:
 - 🔴 **Critical** — blocks merge (bugs, security, missing error handling)

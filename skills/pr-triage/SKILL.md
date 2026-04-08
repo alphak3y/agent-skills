@@ -119,6 +119,8 @@ Before resolving any conflict, ask: **should this file even be tracked?** Common
 - `package-lock.json` changes from unrelated installs
 - `.env` files accidentally committed
 - `.next/`, `node_modules/`, `dist/` build artifacts
+- `test-results/`, `playwright-report/`, `.last-run.json` — Playwright test artifacts (trace zips, error context, screenshots)
+- `coverage/`, `.nyc_output/` — test coverage reports
 
 Check if the file is in `.gitignore` but was committed before the rule existed:
 ```bash

@@ -40,6 +40,7 @@ Don't guess. Don't assume.
 - If a file grows beyond plan's intent → report DONE_WITH_CONCERNS
 - Don't restructure things outside your task
 - DRY, YAGNI — build what's asked, nothing more
+- **Never commit test/build artifacts:** `test-results/`, `playwright-report/`, `.last-run.json`, `coverage/`, `.nyc_output/`, `.next/`, `dist/` — check `git status` before committing and exclude these. If they're not in `.gitignore`, add them.
 
 ## When You're Stuck
 
