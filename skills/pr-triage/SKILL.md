@@ -150,8 +150,22 @@ When a PR mixes concerns:
 Sort ready PRs by:
 1. **No dependencies** first (additive features, bug fixes)
 2. **Schema changes** before code that uses them
-3. **Smaller PRs** before larger (less conflict surface)
-4. **Shared file touches** last (types.ts, middleware.ts, booking-state.ts)
+3. **Test-only PRs before the features they cover** — merge test suites first so the safety net is in place before big changes land
+4. **Smaller PRs** before larger (less conflict surface)
+5. **Shared file touches** last (types.ts, middleware.ts, booking-state.ts)
+
+### Zero-Overlap Fast Path
+
+If no open PRs share any files (check with overlap detection in Step 2), merge order is a **preference not a requirement**. The staleness/overwrite risks don't apply when files are completely disjoint. In this case, just prioritize by risk: smallest/safest first, biggest last.
+
+### Same-Session PR Batches
+
+When a single subagent creates multiple PRs in one session, they're all branched from the same `main` commit. This means:
+- **Staleness risk is near-zero** — no time for main to drift between branches
+- **Overlap is the only concern** — check file overlap, skip the full staleness analysis
+- **Any merge order works** if files don't overlap
+
+This is a concrete time-saver: skip Steps 2-3 staleness checks for same-session batches and go straight to overlap detection. If clean, merge in preference order (small→tests→features).
 
 ## PR Workflow Rules
 
