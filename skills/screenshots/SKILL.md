@@ -1,11 +1,11 @@
 ---
 name: screenshots
-description: Capture webpage screenshots using headless Chrome. Use when needing to screenshot a URL, capture a full-page screenshot, take visual snapshots of websites for design reference, visual testing, or sharing. Works on headless servers (no display needed). Supports viewport and full-page capture modes with configurable dimensions. Triggers on "screenshot", "capture page", "snap this site", "visual reference", "take a screenshot of".
+description: Capture webpage screenshots and crop/resize images using headless Chrome + Pillow. Use when needing to screenshot a URL, capture a full-page screenshot, crop screenshots for product showcases, trim browser chrome, resize images, or prepare marketing assets. Works on headless servers (no display needed). Triggers on "screenshot", "capture page", "snap this site", "visual reference", "take a screenshot of", "crop", "crop image", "trim screenshot", "resize image".
 ---
 
-# Screenshots
+# Screenshots & Image Cropping
 
-Capture webpage screenshots via headless Chrome CLI. No display server or Docker required.
+Capture webpage screenshots via headless Chrome CLI + smart cropping via Pillow. No display server or Docker required.
 
 ## Prerequisites
 
@@ -64,9 +64,72 @@ Use the `image` tool to view/analyze the screenshot:
 image(image="/tmp/screenshot.png", prompt="Describe what you see")
 ```
 
+## Image Cropping
+
+Smart cropping for product screenshots and marketing assets. Requires `pip3 install Pillow`.
+
+```bash
+# Auto-crop: detect and remove browser chrome, nav bars, sticky footers
+python3 scripts/crop.py --input screenshot.png --output cropped.png --auto
+
+# Crop by pixels (remove 80px top, 100px bottom)
+python3 scripts/crop.py -i screenshot.png -o cropped.png --top 80 --bottom 100
+
+# Crop by percentage (5% top, 10% bottom)
+python3 scripts/crop.py -i screenshot.png -o cropped.png --top-pct 5 --bottom-pct 10
+
+# Crop to aspect ratio (centered)
+python3 scripts/crop.py -i screenshot.png -o cropped.png --ratio 16:9
+
+# Trim whitespace borders
+python3 scripts/crop.py -i screenshot.png -o cropped.png --trim-whitespace
+
+# Resize after crop (max width 1920px, preserves ratio)
+python3 scripts/crop.py -i screenshot.png -o cropped.png --auto --max-width 1920
+```
+
+### Crop Modes
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| Auto | `--auto` | Detects dark browser chrome / nav bars and removes them |
+| Manual (px) | `--top/bottom/left/right` | Exact pixel values to trim from each edge |
+| Manual (%) | `--top-pct/bottom-pct/left-pct/right-pct` | Percentage of image to trim |
+| Aspect ratio | `--ratio 16:9` | Crops to target ratio, centered |
+| Trim whitespace | `--trim-whitespace` | Removes uniform-color borders |
+
+### Post-Crop Options
+
+| Flag | Description |
+|------|-------------|
+| `--max-width 1920` | Resize to max width after crop (preserves aspect ratio) |
+| `--max-height 1080` | Resize to max height after crop |
+| `--quality 85` | JPEG output quality (1-100, default 95) |
+| `--padding 10` | Padding for trim-whitespace mode |
+
+### Common Workflows
+
+```bash
+# Screenshot + auto-crop in one go
+scripts/screenshot.sh https://example.com /tmp/raw.png 1440 900
+python3 scripts/crop.py -i /tmp/raw.png -o /tmp/clean.png --auto
+
+# Product showcase: screenshot, crop chrome, resize for web
+scripts/screenshot.sh https://getrenta.io /tmp/product.png 1440 900
+python3 scripts/crop.py -i /tmp/product.png -o /tmp/showcase.png --auto --max-width 1920
+
+# Crop uploaded image for specific section
+python3 scripts/crop.py -i upload.png -o hero.png --top-pct 5 --bottom-pct 30
+
+# Social media format
+python3 scripts/crop.py -i screenshot.png -o og-image.png --ratio 1200:630
+```
+
 ## Troubleshooting
 
 - **"No Chrome found"**: Install Chrome: `sudo apt-get install -y google-chrome-stable`
 - **Full page fails**: Install websockets: `pip3 install websockets`
+- **"Pillow required"**: Install Pillow: `pip3 install Pillow`
 - **Page not fully rendered**: Increase `delay_secs` (e.g., 5-8 for JS-heavy SPAs)
 - **Dark mode captured**: Chrome uses system theme; pages may render in dark mode on some setups
+- **Auto-crop too aggressive/conservative**: Use manual `--top/--bottom` pixel values instead
