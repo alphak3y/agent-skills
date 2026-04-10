@@ -125,6 +125,65 @@ python3 scripts/crop.py -i upload.png -o hero.png --top-pct 5 --bottom-pct 30
 python3 scripts/crop.py -i screenshot.png -o og-image.png --ratio 1200:630
 ```
 
+## Headshot / Portrait Cropping
+
+When cropping photos of people for team pages, profiles, or about sections:
+
+### Finding the Face
+Don't guess — sample pixel brightness to locate skin tones:
+```python
+from PIL import Image
+img = Image.open('photo.jpg')
+w, h = img.size
+for pct in range(0, 100, 5):
+    y = int(h * pct / 100)
+    r, g, b = img.getpixel((w//2, y))[:3]
+    print(f"{pct}% (y={y}): rgb({r},{g},{b}) {'SKIN' if r > 150 and g > 80 else 'SKY' if b > 200 and r < 150 else ''}")
+```
+
+### Crop Rules for Head+Shoulders
+- **Top of frame:** ~10-15% above the top of the head (hair/hat)
+- **Bottom of frame:** mid-chest / shoulders visible
+- **Horizontal:** center on the face, not the body
+- **Aspect ratio:** square (`aspect-square`) works best for team grids
+- **Face should fill 50-60% of the frame height**
+
+### Common Mistakes
+- Cropping too high → just sky/hair, face cut off
+- Cropping too low → too much body, head looks small
+- Using `object-position` CSS instead of actual crop → unpredictable across containers
+- Assuming face is at top of photo → selfies/mountain shots often have face in lower 60%
+
+### Quick Recipe
+```python
+# For a full-body or mountain selfie → head+shoulders crop
+from PIL import Image
+img = Image.open('fullbody.jpg')
+w, h = img.size
+
+# 1. Find face zone (sample center column for skin tones)
+# 2. Set top = 10% above face start, bottom = 20% below face end
+# 3. Make it square, centered horizontally
+top = int(h * 0.25)    # adjust based on face location
+bottom = int(h * 0.85)  # adjust to include shoulders
+crop_h = bottom - top
+crop_w = crop_h  # square
+left = (w - crop_w) // 2
+cropped = img.crop((left, top, left + crop_w, bottom))
+cropped.save('headshot.jpg', quality=90)
+```
+
+### CSS for Team Photo Grids
+```html
+<!-- Use aspect-square containers with object-cover -->
+<div class="aspect-square rounded-2xl overflow-hidden">
+  <img src="/team/mike.jpg" class="w-full h-full object-cover" />
+</div>
+```
+- Don't use `next/image` with `fill` for team photos — plain `<img>` with `object-cover` is more reliable
+- Crop the actual image file rather than relying on `object-position` — what you see is what you get
+- For team grids: crop all photos to the same dimensions before uploading for consistent alignment
+
 ## Troubleshooting
 
 - **"No Chrome found"**: Install Chrome: `sudo apt-get install -y google-chrome-stable`
