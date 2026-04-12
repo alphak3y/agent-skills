@@ -220,3 +220,91 @@ onSelect={(from, to) => {
   // Or better: don't auto-close at all, let user close manually
 }}
 ```
+
+## Focus Outline / Highlight on Click
+
+The default stylesheet and browser add focus outlines when clicking date cells. Kill them:
+
+```tsx
+[UI.DayButton]:
+  "...your styles... !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0",
+```
+
+Use `!important` on all four — the default rdp stylesheet, Tailwind preflight, and browser defaults all compete for focus styling.
+
+## Hover Color on Selected Range
+
+The default hover (`hover:bg-gray-*`) clashes with the orange range highlighting. Use a warm orange hover that blends with the range:
+
+```tsx
+[UI.DayButton]:
+  "...your styles... hover:bg-blaze-orange/20",
+```
+
+**Don't use gray/neutral hover colors** — they look dirty against the warm orange range strip. Match the hover to the range color family at a slightly higher opacity.
+
+Sweet spot: 20% opacity of your brand accent color.
+
+## Disabled Date Appearance
+
+Past dates should be clearly faded — Airbnb uses light gray text. The key is importing the default stylesheet AND using modifiersStyles:
+
+```tsx
+import "react-day-picker/style.css";
+
+<DayPicker
+  classNames={{
+    [DayFlag.disabled]: "!text-summit-black/20 !cursor-default !pointer-events-none",
+  }}
+  modifiersStyles={{
+    disabled: { opacity: 0.25, pointerEvents: 'none' },
+  }}
+/>
+```
+
+Belt and suspenders — classNames for Tailwind integration, modifiersStyles as inline fallback.
+
+## Preventing Past Month Navigation
+
+`startMonth` prop may not visually gray out the back arrow. Handle manually:
+
+```tsx
+const isCurrentMonth = month.getFullYear() === today.getFullYear() 
+  && month.getMonth() === today.getMonth();
+
+<DayPicker
+  month={month}
+  onMonthChange={(m) => {
+    if (m < new Date(today.getFullYear(), today.getMonth(), 1)) return;
+    setMonth(m);
+  }}
+  components={{
+    Chevron: (props) => (
+      <ChevronIcon 
+        orientation={props.orientation} 
+        disabled={props.orientation === "left" && isCurrentMonth}
+      />
+    ),
+  }}
+/>
+```
+
+Gray out the chevron icon at ~20% opacity when disabled. Don't just hide it — that shifts the layout.
+
+## Date Display While Selecting
+
+When showing the selected range in the UI (e.g., search pill):
+
+```tsx
+// Both selected: "Apr 14 – Apr 18"
+// Pickup only: "Apr 14 – …" (ellipsis, not the same date twice)
+// Nothing: "Add dates"
+
+const display = (from && to && from !== to)
+  ? `${format(from)} – ${format(to)}`
+  : from
+    ? `${format(from)} – …`
+    : "";
+```
+
+**Never show "Apr 14 – Apr 14"** — react-day-picker sets `to = from` on first click. Always check `from !== to`.
