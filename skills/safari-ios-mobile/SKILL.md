@@ -211,6 +211,95 @@ When reviewing any PR that touches mobile UI, verify:
 - [ ] Scrollable overlays have `overscroll-contain`
 - [ ] `touch-action: manipulation` on interactive elements (or set globally)
 
+### Rule 11: Prevent Input Zoom on iOS
+
+Safari automatically zooms the page when a user focuses an `<input>` or `<textarea>` with `font-size` below `16px`. The page zooms in and often doesn't zoom back out.
+
+```css
+/* ❌ WRONG — Safari will zoom the page on focus */
+input { font-size: 14px; }
+input { @apply text-sm; } /* text-sm = 14px in Tailwind */
+
+/* ✅ CORRECT — 16px minimum prevents zoom */
+input, textarea, select {
+  font-size: 16px; /* or larger */
+}
+
+/* ✅ ALSO CORRECT — disable zoom globally (use carefully) */
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+```
+
+**Warning:** `maximum-scale=1` prevents ALL pinch-to-zoom, which is an accessibility concern. Prefer setting `font-size: 16px` on inputs instead.
+
+### Rule 12: Disable Auto-Detection of Phone Numbers and Emails
+
+Safari auto-detects strings that look like phone numbers or email addresses and turns them into tappable links with default blue styling, breaking your layout.
+
+```html
+<!-- Add to <head> -->
+<meta name="format-detection" content="telephone=no, email=no, address=no" />
+```
+
+Then explicitly add `<a href="tel:...">` and `<a href="mailto:...">` where you actually want clickable links.
+
+### Rule 13: Use `-webkit-fill-available` as Height Fallback
+
+Before `dvh` existed, `-webkit-fill-available` was the Safari fix for viewport height. It's still useful as a fallback:
+
+```css
+.full-height {
+  height: 100vh; /* fallback */
+  height: -webkit-fill-available; /* Safari */
+  height: 100dvh; /* modern browsers */
+}
+```
+
+### Rule 14: Rubber Banding / Bounce Scroll
+
+Safari's elastic bounce effect at the top/bottom of the page can reveal background colors behind your content.
+
+```css
+/* Set background on html AND body to prevent white flash during bounce */
+html, body {
+  background-color: var(--your-bg-color);
+}
+
+/* For fixed overlays, prevent bounce entirely */
+.overlay {
+  overscroll-behavior: none;
+}
+```
+
+### Rule 15: `position: fixed` Breaks Inside Transformed Parents
+
+When a parent has `transform`, `position: fixed` children become `position: absolute` relative to that parent instead of the viewport. This is per CSS spec but catches everyone off guard.
+
+```tsx
+// ❌ WRONG — fixed element inside transformed parent
+<div className="transform translate-y-0">
+  <div className="fixed top-0">I'm not actually fixed to viewport!</div>
+</div>
+
+// ✅ CORRECT — use portal (Rule 1)
+{createPortal(<div className="fixed top-0">Truly fixed</div>, document.body)}
+```
+
+This is the root cause of Rule 1 (stacking context trap) — portals solve both z-index AND position:fixed issues.
+
+### Rule 16: Smooth Scrolling Containers Need `-webkit-overflow-scrolling`
+
+Without this, scrollable containers on iOS feel "sticky" and lack momentum scrolling:
+
+```css
+.scrollable {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* enables momentum scrolling */
+  overscroll-behavior: contain; /* prevent scroll chaining */
+}
+```
+
+Note: Modern iOS versions handle this better by default, but adding it explicitly prevents issues on older devices.
+
 ---
 
 ## Audit Commands
@@ -235,6 +324,15 @@ grep -rn "backdrop-blur\|backdrop-filter" src/ --include="*.tsx" --include="*.cs
 
 # Find missing overscroll-contain on scroll containers inside fixed overlays
 grep -rn "overflow-y-auto" src/ --include="*.tsx" | grep -v "overscroll-contain"
+
+# Find inputs with font-size below 16px (zoom trigger)
+grep -rn "text-xs\|text-sm\|font-size.*1[0-5]px" src/ --include="*.tsx" | grep -i "input\|textarea\|select"
+
+# Find missing format-detection meta tag
+grep -rn "format-detection" src/app/layout.tsx
+
+# Find position:fixed inside transform parents (potential issues)
+grep -rn "transform\|translate" src/ --include="*.tsx" | grep -v node_modules
 ```
 
 ---
