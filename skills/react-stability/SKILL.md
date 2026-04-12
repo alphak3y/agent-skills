@@ -108,6 +108,52 @@ When you see an infinite loop:
 | `JSON.parse()` results | New object every render | useMemo |
 | `useSearchParams()` derived state | URLSearchParams creates new refs | Memoize derived values |
 
+## Hydration Mismatch Prevention
+
+Next.js hydration errors happen when server-rendered HTML doesn't match the client's first render. Common in components with client-only state.
+
+### Pattern: SSR Placeholder Shell
+
+When a component has unavoidable server/client differences (timezones, `Date()`, portals, browser APIs), render a static shell on server and switch to interactive on client:
+
+```tsx
+export function MyComponent() {
+  const [clientReady, setClientReady] = useState(false);
+  useEffect(() => { setClientReady(true); }, []);
+
+  // Static shell — matches server render exactly
+  if (!clientReady) {
+    return (
+      <div className="placeholder-shell">
+        {/* Minimal static HTML that looks like the component */}
+      </div>
+    );
+  }
+
+  // Full interactive render — client only
+  return <FullInteractiveComponent />;
+}
+```
+
+### Common Hydration Mismatch Sources
+
+| Source | Why it mismatches | Fix |
+|--------|------------------|-----|
+| `new Date()` | Server time ≠ client time | SSR shell or `suppressHydrationWarning` |
+| `typeof document` guards | `false` on server, `true` on client | SSR shell pattern |
+| Cycling text/animations | Server picks index 0, client may differ | Return empty until mounted |
+| `createPortal` | Server can't render portals | Guard with mounted check |
+| `localStorage`/`sessionStorage` | Not available on server | Read after mount only |
+| `min={today}` on date inputs | Server: `""`, client: `"2026-04-12"` | `suppressHydrationWarning` on that element |
+| Browser extensions (Chrome) | Inject DOM before React hydrates | Nothing you can do — SSR shell avoids the conflict |
+
+### `suppressHydrationWarning` Limitations
+
+- Only suppresses warnings on the **element itself**, not children
+- Only works for **text content** differences, not structural (element count/type) differences
+- Use for leaf elements (inputs with dynamic `min`/`value`), not wrapper divs
+- For structural differences, use the SSR shell pattern instead
+
 ## Real-World Example (from Renta codebase)
 
 The booking wizard had this bug on **4 pages** (addons, waiver, payment, SignatureCapture):
