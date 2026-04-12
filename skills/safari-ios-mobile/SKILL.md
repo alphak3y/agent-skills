@@ -277,6 +277,57 @@ If you add a sub-panel (like a date picker) inside a scrollable drawer, it will 
 
 The scrim and panel must have higher z-index than the drawer (`z-[10001]` and `z-[10002]` vs drawer's `z-[10000]`).
 
+### Rule 15: Portal on Mobile Only — Desktop Dropdowns Need Inline Rendering
+
+Portaling to `document.body` breaks `position: absolute` dropdowns on desktop — there's no positioned parent to anchor against.
+
+```tsx
+const [isMobile, setIsMobile] = useState(true);
+useEffect(() => {
+  const check = () => setIsMobile(window.innerWidth < 768);
+  check();
+  window.addEventListener('resize', check);
+  return () => window.removeEventListener('resize', check);
+}, []);
+
+// Mobile: portal (escape stacking contexts)
+// Desktop: inline (preserve relative positioning)
+return isMobile ? createPortal(content, document.body) : content;
+```
+
+**Portal:** full-screen overlays, modals, drawers.
+**Don't portal:** dropdowns anchored to a button (`absolute top-full right-0`).
+
+### Rule 16: Click-Outside Handlers Must Exclude the Toggle Button
+
+A toggle button + click-outside-to-close will fight — the outside handler fires on the toggle click, immediately closing what just opened.
+
+```tsx
+function handleClick(e: MouseEvent) {
+  if (triggerRef?.current?.contains(e.target as Node)) return;
+  if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+}
+```
+
+Pass `triggerRef` from the parent that owns the toggle button.
+
+### Rule 17: Close Animations Need a Closing State
+
+Conditionally rendered elements (`{isOpen && <Dropdown/>}`) unmount instantly — can't animate out. Add a closing state:
+
+```tsx
+const [closing, setClosing] = useState(false);
+const handleClose = useCallback(() => {
+  setClosing(true);
+  setTimeout(() => { setClosing(false); onClose(); }, 200);
+}, [onClose]);
+
+if (!isOpen && !closing) return null;
+className={closing ? 'animate-fade-out' : 'animate-fade-in'}
+```
+
+Wire ALL close paths (scrim tap, X button, menu item click, escape key) through `handleClose`, not `onClose` directly.
+
 ---
 
 ## Audit Commands
