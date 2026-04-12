@@ -291,6 +291,43 @@ const isCurrentMonth = month.getFullYear() === today.getFullYear()
 
 Gray out the chevron icon at ~20% opacity when disabled. Don't just hide it — that shifts the layout.
 
+## Mobile Accordion Pattern
+
+On mobile, don't drop the calendar inline — it pushes content off-screen. Use an accordion panel:
+
+```tsx
+// Collapsed: "Add dates" button matching other input styles
+// Expanded: fixed panel sliding up from bottom with scrim overlay
+
+<div className="fixed inset-x-0 top-[35vh] bottom-0 z-[10002] bg-white rounded-t-2xl flex flex-col">
+  <div className="shrink-0">Header (X + title + Clear)</div>
+  <div className="flex-1 flex items-center px-4">Calendar</div>
+  <div className="shrink-0 px-4 pb-4">Done button</div>
+</div>
+```
+
+Key decisions:
+- **Scrim** (`bg-black/20`) covers everything behind the panel — tap to dismiss
+- **`top-[35vh]`** — panel covers bottom 65% of screen, hiding fields below the trigger
+- **`flex flex-col`** — header pinned top, Done pinned bottom, calendar centered in middle
+- **`compact` prop** — pass to calendar to disable `showOutsideDays` and `fixedWeeks` on mobile (saves ~2 rows of vertical space)
+- **No auto-close** — let user review selection and tap Done. Auto-close on range selection feels abrupt on mobile.
+- **`activeSection` state** — only one section expanded at a time (accordion). Tapping WHERE/WHAT closes calendar.
+
+## Full-Width Calendar Grid on Mobile
+
+The default day grid has fixed `w-10` cells = 280px total. On a 430px phone, it looks off-center.
+
+Fix: make grid rows `w-full` and let cells stretch:
+
+```tsx
+[UI.Weekdays]: "grid grid-cols-7 mb-1 w-full",
+[UI.Week]: "grid grid-cols-7 w-full",
+[UI.MonthGrid]: "w-full",
+[UI.Day]: "h-10 relative flex items-center justify-center",  // no fixed width
+[UI.DayButton]: "w-10 h-10 ...",  // button stays 40px, centered in flexible cell
+```
+
 ## Date Display While Selecting
 
 When showing the selected range in the UI (e.g., search pill):

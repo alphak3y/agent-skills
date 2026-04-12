@@ -242,6 +242,27 @@ Safari auto-detects strings that look like phone numbers or email addresses and 
 
 Then explicitly add `<a href="tel:...">` and `<a href="mailto:...">` where you actually want clickable links.
 
+### Rule 13: Mobile Panels Need Fixed Positioning Outside the Scroll Container
+
+If you add a sub-panel (like a date picker) inside a scrollable drawer, it will scroll with the content and look broken. The panel must be `fixed` positioned as a sibling of the drawer, not a child.
+
+```tsx
+// ❌ WRONG — panel inside the scroll container
+<div className="overflow-y-auto">
+  <FormFields />
+  <CalendarPanel />  {/* scrolls with content */}
+</div>
+
+// ✅ CORRECT — panel is a fixed sibling, above the drawer
+<div className="overflow-y-auto">
+  <FormFields />
+</div>
+{showPanel && <div className="fixed inset-x-0 top-[35vh] bottom-0 z-[10002]">Panel</div>}
+{showPanel && <div className="fixed inset-0 bg-black/20 z-[10001]" onClick={close} />}
+```
+
+The scrim and panel must have higher z-index than the drawer (`z-[10001]` and `z-[10002]` vs drawer's `z-[10000]`).
+
 ---
 
 ## Audit Commands
