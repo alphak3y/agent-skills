@@ -242,7 +242,21 @@ Safari auto-detects strings that look like phone numbers or email addresses and 
 
 Then explicitly add `<a href="tel:...">` and `<a href="mailto:...">` where you actually want clickable links.
 
-### Rule 13: Mobile Panels Need Fixed Positioning Outside the Scroll Container
+### Rule 13: Mobile Drawers Should Auto-Height, Not Full-Height
+
+Don't pin drawers from a fixed top to `bottom-0` — this creates dead whitespace below the content.
+
+```css
+/* ❌ WRONG — always full height, dead space below content */
+.fixed.inset-x-0.top-[8vh].bottom-0
+
+/* ✅ CORRECT — grows from bottom to fit content, capped */
+.fixed.inset-x-0.bottom-0.max-h-[92vh]
+```
+
+The drawer wraps tightly around its content. `max-h` prevents it from exceeding the viewport on content-heavy pages. `overflow-y-auto` handles the rare case where content exceeds the max.
+
+### Rule 14: Mobile Panels Need Fixed Positioning Outside the Scroll Container
 
 If you add a sub-panel (like a date picker) inside a scrollable drawer, it will scroll with the content and look broken. The panel must be `fixed` positioned as a sibling of the drawer, not a child.
 
