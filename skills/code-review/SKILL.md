@@ -32,6 +32,7 @@ Check:
 - **Quality** — clear names, appropriate complexity, proper error handling
 - **Testing** — tests verify behavior (not mocks), edge cases covered
 - **Patterns** — follows codebase conventions, DRY, YAGNI
+- **Safari iOS Compatibility** — if PR touches mobile UI, modals, drawers, date inputs, or fixed-position elements, verify against `safari-ios-mobile` skill rules. Run `bash scripts/safari-lint.sh` if available. Key checks: portals for overlays, no raw date inputs, no 100vh, no body overflow:hidden, no backdrop-blur without md: prefix.
 - **Artifacts** — no test/build artifacts committed (`test-results/`, `playwright-report/`, `.last-run.json`, `coverage/`, `.next/`, `dist/`). If found, flag as 🔴 Critical.
 
 Issues by severity:

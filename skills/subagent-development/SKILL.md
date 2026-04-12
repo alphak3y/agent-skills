@@ -98,6 +98,24 @@ Set timeout based on task complexity. 8+ minutes for anything involving research
 
 For web projects, subagents should spin up a dev server after completing work so changes can be tested live. See the **pr-triage** skill for the full `[POST-COMPLETION]` prompt template and guidelines.
 
+## Safari iOS Compatibility
+
+If a PR touches any of the following, add this constraint to the subagent prompt:
+
+> Run `bash scripts/safari-lint.sh` before committing. Fix any violations. Read `skills/safari-ios-mobile/SKILL.md` for the fix patterns.
+
+**Trigger files/patterns:**
+- Modals, drawers, overlays (`fixed inset-0`, `z-index`, `position: fixed`)
+- Date inputs (`type="date"`)
+- Mobile layouts (`100vh`, `dvh`, viewport height)
+- Scroll lock (`body.style.overflow`)
+- `backdrop-filter` / `backdrop-blur`
+- Any component in `(storefront)`, `(marketplace)`, `embed/`, `sign/`
+
+**For PRs with significant mobile UI changes**, also add:
+
+> Run Playwright WebKit smoke tests: `npx playwright test --project=webkit src/__tests__/safari/`
+
 ## Prompt Templates
 
 - `references/implementer-prompt.md` — task dispatch template
