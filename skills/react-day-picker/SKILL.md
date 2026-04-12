@@ -1,0 +1,222 @@
+# react-day-picker v9 — Styling & Integration Guide
+
+## Description
+Patterns for integrating react-day-picker v9 with Tailwind CSS. Use when building branded date pickers, date range selectors, or any calendar UI. Covers the critical pitfalls that waste hours.
+
+## When to Use
+- Adding a date picker to any page
+- Styling react-day-picker with Tailwind
+- Debugging disabled/selected/range styles not applying
+- Building a hybrid mobile (native) + desktop (branded) date picker
+
+---
+
+## Critical Rule: Always Import the Default Stylesheet
+
+```tsx
+import "react-day-picker/style.css";
+```
+
+**Without this, disabled states, range states, and modifier styles silently fail.** The default stylesheet sets CSS variables like `--rdp-disabled-opacity` that the component relies on. If you skip it and only use `classNames`, modifiers won't apply.
+
+## Styling with classNames
+
+v9 uses three enums for `classNames` keys:
+
+```tsx
+import { UI, DayFlag, SelectionState } from "react-day-picker";
+
+// UI — structural elements
+UI.Root        // "root"
+UI.Day         // "day"
+UI.DayButton   // "day_button"
+UI.Nav         // "nav"
+UI.MonthCaption // "month_caption"
+// ... etc
+
+// DayFlag — day state modifiers
+DayFlag.disabled  // "disabled"
+DayFlag.today     // "today"
+DayFlag.outside   // "outside"
+DayFlag.hidden    // "hidden"
+DayFlag.focused   // "focused"
+
+// SelectionState — selection modifiers
+SelectionState.selected      // "selected"
+SelectionState.range_start   // "range_start"
+SelectionState.range_middle  // "range_middle"
+SelectionState.range_end     // "range_end"
+```
+
+All three go into the same `classNames` prop:
+
+```tsx
+<DayPicker
+  classNames={{
+    [UI.Root]: "font-sans",
+    [UI.Nav]: "flex gap-1",
+    [DayFlag.disabled]: "!text-gray-300 !cursor-default",
+    [SelectionState.selected]: "!bg-orange-500 !text-white",
+  }}
+/>
+```
+
+## The Disabled Styles Trap
+
+**Problem:** You set `disabled={{ before: today }}` and `classNames={{ [DayFlag.disabled]: "text-gray-300" }}` but disabled dates look identical to active ones.
+
+**Cause:** Your custom classNames REPLACE the defaults. The default `.rdp-disabled` class includes opacity and pointer-events rules. Without it, your disabled class is just a text color that gets overridden by the day button styles.
+
+**Fix options (in order of reliability):**
+
+### Option 1: modifiersStyles (most reliable)
+```tsx
+<DayPicker
+  modifiersStyles={{
+    disabled: { opacity: 0.25, pointerEvents: 'none' }
+  }}
+/>
+```
+Inline styles always win specificity battles.
+
+### Option 2: CSS Variable Override
+```css
+.rdp-root {
+  --rdp-disabled-opacity: 0.25;
+}
+```
+
+### Option 3: Extend Default ClassNames
+```tsx
+import { getDefaultClassNames } from "react-day-picker";
+const defaults = getDefaultClassNames();
+
+<DayPicker
+  classNames={{
+    disabled: `${defaults.disabled} !text-gray-300`,
+  }}
+/>
+```
+
+### Recommended: Belt and Suspenders
+Use BOTH the stylesheet import AND modifiersStyles:
+```tsx
+import "react-day-picker/style.css";
+
+<DayPicker
+  classNames={{
+    [DayFlag.disabled]: "!text-summit-black/20 !cursor-default !pointer-events-none",
+  }}
+  modifiersStyles={{
+    disabled: { opacity: 0.25, pointerEvents: 'none' },
+  }}
+/>
+```
+
+## Range Selection Styling
+
+For a continuous range strip (no vertical lines between days):
+
+```tsx
+// Use inset box-shadow instead of borders for seamless range strip
+[SelectionState.range_start]:
+  "!bg-orange-500/15 !rounded-l-xl !rounded-r-none !shadow-[inset_0_1px_0_rgba(255,107,44,0.25),inset_0_-1px_0_rgba(255,107,44,0.25),inset_1px_0_0_rgba(255,107,44,0.25)]",
+[SelectionState.range_end]:
+  "!bg-orange-500/15 !rounded-r-xl !rounded-l-none !shadow-[inset_0_1px_0_rgba(255,107,44,0.25),inset_0_-1px_0_rgba(255,107,44,0.25),inset_-1px_0_0_rgba(255,107,44,0.25)]",
+[SelectionState.range_middle]:
+  "!bg-orange-500/10 !rounded-none !shadow-[inset_0_1px_0_rgba(255,107,44,0.25),inset_0_-1px_0_rgba(255,107,44,0.25)]",
+```
+
+**Do NOT use `border`** — it creates vertical lines between each day cell. Use `inset box-shadow` for top/bottom/left/right border effects without gaps.
+
+## Hover Range Preview
+
+React-day-picker v9 doesn't show range preview on hover by default. Add it manually:
+
+```tsx
+const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+
+<DayPicker
+  modifiers={{
+    hoverRange: (date: Date) => {
+      if (!selected?.from || !hoveredDate) return false;
+      // Only show preview when pickup is selected but return isn't yet
+      const hasRealRange = selected.to && selected.from.getTime() !== selected.to.getTime();
+      if (hasRealRange) return false;
+      
+      const fromTime = selected.from.getTime();
+      const hovTime = hoveredDate.getTime();
+      const dateTime = date.getTime();
+      return dateTime >= Math.min(fromTime, hovTime) && dateTime <= Math.max(fromTime, hovTime);
+    },
+  }}
+  modifiersClassNames={{
+    hoverRange: "!bg-orange-500/5 !rounded-none",
+  }}
+  onDayMouseEnter={(date) => setHoveredDate(date)}
+  onDayMouseLeave={() => setHoveredDate(null)}
+/>
+```
+
+**Key gotcha:** react-day-picker sets `to = from` on first click. Check `from.getTime() !== to.getTime()` to detect "user clicked pickup but hasn't picked return yet."
+
+## Preventing Past Month Navigation
+
+`startMonth` prop may not visually disable the back arrow. Handle it manually:
+
+```tsx
+const [month, setMonth] = useState(today);
+const isCurrentMonth = month.getFullYear() === today.getFullYear() 
+  && month.getMonth() === today.getMonth();
+
+<DayPicker
+  month={month}
+  onMonthChange={(m) => {
+    if (m < new Date(today.getFullYear(), today.getMonth(), 1)) return;
+    setMonth(m);
+  }}
+  components={{
+    Chevron: (props) => (
+      <ChevronIcon 
+        orientation={props.orientation} 
+        disabled={props.orientation === "left" && isCurrentMonth} 
+      />
+    ),
+  }}
+/>
+```
+
+## Hybrid: Native Mobile + Branded Desktop
+
+Best pattern for cross-platform date pickers:
+
+- **Mobile (<md):** Invisible `<input type="date">` overlay (see safari-ios-mobile skill)
+- **Desktop (md+):** react-day-picker with full brand styling
+
+```tsx
+// Mobile: invisible overlay triggers native iOS/Android picker
+<div className="relative md:hidden">
+  <div className="styled-display">{date || "Select date"}</div>
+  <input type="date" className="absolute inset-0 opacity-0 w-full h-full" />
+</div>
+
+// Desktop: branded calendar
+<div className="hidden md:block">
+  <DateRangeCalendar ... />
+</div>
+```
+
+**Never use `.showPicker()` on mobile Safari** — it's unreliable. The invisible overlay always works.
+
+## Auto-Close Behavior
+
+Don't auto-close immediately when both dates are selected — react-day-picker sets `to = from` on first click, which triggers false positives:
+
+```tsx
+onSelect={(from, to) => {
+  setFromDate(from);
+  setToDate(to);
+  // Only auto-close on a REAL range (from ≠ to)
+  // Or better: don't auto-close at all, let user close manually
+}}
+```
