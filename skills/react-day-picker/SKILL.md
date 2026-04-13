@@ -328,6 +328,55 @@ Fix: make grid rows `w-full` and let cells stretch:
 [UI.DayButton]: "w-10 h-10 ...",  // button stays 40px, centered in flexible cell
 ```
 
+## Configurable Past Date Restriction
+
+The calendar needs different behavior for booking vs admin:
+
+```tsx
+interface Props {
+  disablePastDates?: boolean; // default true
+  min?: string;              // earliest selectable date
+  max?: string;              // latest selectable date
+}
+
+// Booking flow: can't pick past dates
+<DateRangeCalendar disablePastDates={true} />  // default
+
+// Admin reporting: past dates allowed, capped at tenant creation
+<DateRangeCalendar disablePastDates={false} min={tenantCreatedAt} />
+```
+
+Also gate month navigation on `disablePastDates` — don't block past month nav for admin.
+
+## Controlled vs Uncontrolled Date Inputs
+
+If using `DateInput` inside a `<form>` that submits via `FormData`:
+
+```tsx
+// ❌ WRONG — display never updates, calendar can't highlight selection
+<DateInput name="validFrom" value="" onChange={() => {}} />
+
+// ✅ CORRECT — controlled state, display + calendar work
+const [date, setDate] = useState("");
+<DateInput name="validFrom" value={date} onChange={setDate} />
+```
+
+The `name` prop still works for FormData — the hidden input carries it. But you MUST use controlled state for the branded display to update.
+
+## Date Display Formatting — Always UTC
+
+All date formatting must use `timeZone: 'UTC'` to prevent hydration mismatches:
+
+```tsx
+// ❌ WRONG — server (UTC) and client (local tz) render different dates
+new Date(dateStr).toLocaleDateString()
+
+// ✅ CORRECT — always renders the same regardless of timezone
+date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+```
+
+Centralize formatters in `src/lib/utils/dates.ts` and import everywhere.
+
 ## Date Display While Selecting
 
 When showing the selected range in the UI (e.g., search pill):
