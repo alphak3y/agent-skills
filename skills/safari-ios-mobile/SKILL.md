@@ -328,6 +328,21 @@ className={closing ? 'animate-fade-out' : 'animate-fade-in'}
 
 Wire ALL close paths (scrim tap, X button, menu item click, escape key) through `handleClose`, not `onClose` directly.
 
+### Rule 18: Collapsed Sidebars Need `overflow-x-hidden`
+
+When a sidebar collapses to icon-only mode, text labels become `invisible` or hidden but may still affect layout width. Add `overflow-x-hidden` on the nav scroll container to prevent horizontal scroll.
+
+```tsx
+// ✅ CORRECT
+<nav className="overflow-y-auto overflow-x-hidden">
+
+// Also: use `invisible` not `hidden` for section headers
+// to maintain vertical spacing alignment between collapsed/expanded
+<p className={isCollapsed ? 'invisible' : ''}>Section Title</p>
+```
+
+**Don't use CSS tooltips inside `overflow-y-auto` containers** — they trigger horizontal scroll. Use portaled tooltips or native `title` attribute instead.
+
 ---
 
 ## Audit Commands
