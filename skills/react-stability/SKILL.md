@@ -146,6 +146,7 @@ export function MyComponent() {
 | `localStorage`/`sessionStorage` | Not available on server | Read after mount only |
 | `min={today}` on date inputs | Server: `""`, client: `"2026-04-12"` | `suppressHydrationWarning` on that element |
 | Browser extensions (Chrome) | Inject DOM before React hydrates | Nothing you can do — SSR shell avoids the conflict |
+| Date formatting without `timeZone: 'UTC'` | Server (UTC) renders "Apr 22", client (MDT) renders "Apr 21" | Always pass `timeZone: 'UTC'` to `toLocaleDateString()` |
 
 ### `suppressHydrationWarning` Limitations
 
