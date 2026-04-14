@@ -5,7 +5,31 @@ description: "Cleanup stale subagent sessions from OpenClaw session stores. Use 
 
 # Session Cleanup
 
-Remove completed subagent sessions that are no longer needed. Keeps main sessions, cron sessions, and channel sessions (Telegram, etc.) untouched.
+Remove completed subagent sessions and unauthorized channel sessions. Keeps main sessions, cron sessions, and authorized channel sessions.
+
+## Unauthorized Telegram Session Cleanup
+
+Random users who message the Telegram bot create session entries even when blocked by `allowFrom`. Clean these periodically:
+
+```python
+import json
+with open('~/.openclaw/agents/main/sessions/sessions.json') as f:
+    data = json.load(f)
+
+# Find telegram sessions not from the allowed user
+ALLOWED_IDS = ['1603151256']  # Update with your Telegram user ID(s)
+unauthorized = [k for k in data.keys() 
+                if 'telegram:direct:' in k 
+                and not any(uid in k for uid in ALLOWED_IDS)]
+
+for k in unauthorized:
+    del data[k]
+
+with open('~/.openclaw/agents/main/sessions/sessions.json', 'w') as f:
+    json.dump(data, f, indent=2)
+```
+
+Run this in heartbeats (every ~2 hours) or when the Control UI sidebar shows unknown Telegram users.
 
 ## When to Use
 
