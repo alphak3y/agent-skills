@@ -94,6 +94,46 @@ sessions_spawn(
 
 Set timeout based on task complexity. 8+ minutes for anything involving research or multi-file changes.
 
+## Post-Completion: Adversarial Review
+
+Every PR goes through a **two-stage review** before presenting to the human:
+
+### Stage 1: Cortana structural review
+The orchestrator reads the diff and checks:
+- Files changed make sense for the task
+- No unrelated changes bundled in
+- Migration has verification script
+- Safari lint passes
+- No obvious regressions
+
+### Stage 2: Stack adversarial review (separate run)
+Fire a NEW subagent run with this prompt pattern:
+
+```
+You did NOT write this code. You are reviewing someone else's PR.
+Be harsh. Find bugs, security issues, missing edge cases.
+
+Read the diff:
+  git diff origin/main..origin/<branch>
+
+Check: security, data integrity, error handling, edge cases, code quality, migration.
+Post your review as a PR comment via: gh pr comment <number> --body "..."
+
+Format: ## 💻 Stack Review: PR #<number>
+Verdict: APPROVED / NEEDS_CHANGES
+Cite file:line for every issue.
+```
+
+**Why a separate run?** The builder run has "I wrote this, it works" bias. A fresh run with adversarial framing forces critical thinking. Stack's reviews of OTHER people's code consistently catch more issues than self-reviews.
+
+**When to skip:** Trivial PRs (docs-only, 1-line config, skill updates). Use judgment.
+
+### Stage 3: Fix and re-review
+If NEEDS_CHANGES:
+1. Cortana fixes the blocking issues
+2. Posts follow-up comment on PR
+3. No need for a third review unless changes were significant
+
 ## Post-Completion: Live Preview
 
 For web projects, subagents should spin up a dev server after completing work so changes can be tested live. See the **pr-triage** skill for the full `[POST-COMPLETION]` prompt template and guidelines.
