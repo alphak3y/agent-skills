@@ -43,6 +43,37 @@ Result: ✅ Spec compliant | ❌ Issues found (with file:line references)
 - **No secrets in client code** — `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY` never in `"use client"` files or `NEXT_PUBLIC_*` vars
 - **Rate limiting** — public-facing endpoints have rate limits
 
+### Auth & Tenancy Heuristics
+Use when reviewing storefront auth, admin customer views, phone-based identity, or audit/sensitive actions.
+
+**Marketplace vs tenant scope:**
+- Storefront (marketplace) customer identity is global — one person is the same customer across tenants for sign-in, magic links, and SMS codes. Lookup by email/phone may intentionally not filter by `tenant_id`
+- Admin dashboards (customer list, booking detail, etc.) are tenant-scoped — queries must filter by the authenticated tenant unless the product explicitly defines cross-tenant admin
+- Review: Does this path assume "customer = per tenant" when the product means "customer = marketplace identity"? Conversely, does a query leak other tenants' data into an admin UI?
+
+**Phone-based auth & lookups:**
+- Normalize phone strings consistently (strip to `+` and digits)
+- Deterministic resolution: if multiple rows can match one phone, do NOT pick `.limit(1)` at random. Prefer ordered+bounded fetch (newest first) and reject ambiguous matches, or explicit disambiguation UX
+- Review: Can two DB rows share this phone? What happens? Could an attacker hit a nondeterministic branch?
+
+**Audit fields & privileged actions:**
+- Fields like `approvedBy`, `editedBy`, reason codes for compliance-sensitive actions must come from server-side session/staff context (`withAdminAuth`, `getAdminStaffContext`), not from the client request body
+- Client may send optional notes or UI labels, but identity for audit must be derived from authenticated records
+- Review: Can the caller spoof `approvedBy`, `userId`, `staffId`, or `role`? Does `approval_metadata` store trustworthy identity?
+
+**Severity rubric:**
+| Signal | Severity |
+|--------|----------|
+| Tenant A can see Tenant B's PII in admin | 🔴 High |
+| Ambiguous phone match picks arbitrary user | 🔴 High |
+| Client-controlled audit identity | 🔴 High |
+| Comment/docs wrong about tenant scope | 🟡 Low (fix to prevent regressions) |
+
+**Suggested PR comment shorthand:**
+- Tenancy: "Confirm this query is scoped to `tenant_id` for admin paths; storefront auth may remain global by design — document which."
+- Phone: "Ensure phone match is deterministic; reject or handle duplicate phones explicitly."
+- Audit: "Derive approver identity from `withAdminAuth` (or equivalent), not from the request body."
+
 ### Data Integrity
 - **Atomic operations** — multi-step mutations use transactions or atomic RPCs, not sequential independent calls
 - **Race conditions** — concurrent writes handled (optimistic locking, `SELECT ... FOR UPDATE`, unique constraints)
