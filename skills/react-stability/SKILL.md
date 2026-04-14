@@ -171,3 +171,51 @@ useEffect(() => {
 ```
 
 Fixed by stabilizing deps per patterns above. Key lesson: **any function that decodes/parses URL params or JSON into objects will produce new references every render.**
+
+## Next.js App Debugging Heuristics
+
+### localStorage keys: scope to tenant
+
+A global key (e.g. `waiver-banner-dismissed`) makes dismiss state leak across tenants when an operator manages multiple shops in the same browser. Scope the key with `tenantId`:
+
+```typescript
+// ❌ BAD — shared across tenants
+localStorage.getItem("waiver-banner-dismissed");
+
+// ✅ GOOD — per-tenant
+localStorage.getItem(`waiver-banner-dismissed-${tenantId}`);
+```
+
+Note: localStorage is still per-device — no cross-machine sync without server state. That's usually fine for dismissible banners and UI preferences.
+
+### Client fetch to API routes: guard against non-JSON errors
+
+If an API route handler can throw, the browser may receive a non-JSON error (Next.js default 500 page or plain text). This breaks client-side `res.json()` and makes banner/UI logic unpredictable.
+
+Always wrap route handlers in a narrow try/catch that returns structured JSON:
+
+```typescript
+// ✅ GOOD — client always gets JSON
+export async function GET() {
+  try {
+    const data = await riskyOperation();
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error("Route error:", err instanceof Error ? err.message : err);
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
+  }
+}
+```
+
+On the client side, also guard the `.json()` call:
+
+```typescript
+// ✅ GOOD — handles non-JSON responses gracefully
+const res = await fetch("/api/admin/something");
+if (!res.ok) return; // or show fallback UI
+const data = await res.json().catch(() => null);
+if (!data) return;
+```
