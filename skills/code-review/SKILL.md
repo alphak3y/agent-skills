@@ -140,6 +140,54 @@ Max 3 review iterations per task. If still failing after 3, escalate to human wi
 - What the reviewer flagged
 - What was tried
 
+## Database Migrations
+
+Every PR with a migration MUST include a verification script. Add it to the PR description under a `### Migration Verification` section.
+
+**Template:**
+```sql
+-- Run after migration to verify all changes applied
+SELECT 
+  -- Check new columns
+  (SELECT count(*) FROM information_schema.columns 
+   WHERE table_name = '<table>' AND column_name IN ('<col1>', '<col2>')) as new_columns,
+  -- Check new tables
+  (SELECT count(*) FROM information_schema.tables 
+   WHERE table_name IN ('<new_table>')) as new_tables,
+  -- Check new indexes
+  (SELECT count(*) FROM pg_indexes 
+   WHERE indexname IN ('<index_name>')) as new_indexes,
+  -- Check new enum values
+  (SELECT count(*) FROM pg_enum 
+   WHERE enumlabel IN ('<value>') AND enumtypid = '<enum_type>'::regtype) as new_enums,
+  -- Check RLS enabled
+  (SELECT rowsecurity FROM pg_tables 
+   WHERE tablename = '<table>') as rls_enabled,
+  -- Check RLS policies
+  (SELECT count(*) FROM pg_policies 
+   WHERE tablename = '<table>') as policies,
+  -- Check RPCs/functions
+  (SELECT count(*) FROM pg_proc 
+   WHERE proname IN ('<function_name>')) as rpcs;
+
+-- Expected: <values>
+```
+
+**Rules:**
+- Verification script goes in the PR description, not a separate file
+- Include expected values so the reviewer can compare
+- For enum changes: always `ALTER TYPE ... ADD VALUE IF NOT EXISTS` BEFORE any queries using the new value
+- For new tables: include column count, RLS status, policy count
+- For RPCs: verify they exist in `pg_proc`
+- Test the verification query yourself before posting the PR
+
+**Common migration pitfalls:**
+- `booking_status` is an **enum type**, not a CHECK constraint — use `ALTER TYPE` not `ALTER TABLE ADD CONSTRAINT`
+- `IF NOT EXISTS` on `CREATE TABLE` silently succeeds if table exists with different schema — verify columns match
+- `ALTER TABLE ADD COLUMN IF NOT EXISTS` doesn't check column type — a column with the wrong type won't error
+- RLS policies with `USING (true)` effectively disable RLS — always scope to tenant
+- Consolidated schema (`supabase/consolidated/schema.sql`) must be updated alongside migrations — schema sync tests will fail otherwise
+
 ## Common Gotchas (from Renta codebase)
 
 These come up repeatedly — check for them every time:
